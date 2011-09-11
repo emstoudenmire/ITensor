@@ -948,6 +948,7 @@ public:
 
     friend ostream& operator<<(ostream & s, const ITensor & t);
 
+    friend class ITAssigner;
 }; //ITensor
 
 
@@ -975,6 +976,44 @@ inline Tensor multSiteOps(Tensor a, Tensor b)
     Tensor res = a * b;
     res.mapprime(2,1,primeSite);
     return res;
+}
+
+class ITAssigner
+{
+    ITensor& T_;
+    vector<Real> dat_;
+
+    ITAssigner(ITensor& T, Real r)
+    : T_(T)
+    { 
+        dat_.reserve(T.vec_size());
+        dat_.push_back(r); 
+    }
+
+public:
+    ~ITAssigner()
+    {
+        if((int) dat_.size() > T_.p->v.Length())
+            { Error("Comma assignment list too long.\n"); }
+        Counter c; T_.initCounter(c);
+        size_t j = 0;
+        T_.solo();
+        T_.scaleTo(1);
+        for(; c.notDone(); ++c) { T_.p->v(c.ind) = dat_[j++]; }
+    }
+
+    ITAssigner& operator,(Real r)
+    {
+        dat_.push_back(r);
+        return *this;
+    }
+
+    friend ITAssigner operator<<(ITensor& T, Real r);
+};
+
+inline ITAssigner operator<<(ITensor& T, Real r)
+{
+    return ITAssigner(T,r);
 }
 
 
