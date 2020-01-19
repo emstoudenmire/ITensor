@@ -379,8 +379,8 @@ hptt_add(PlusEQ const& P,
          Dense<T>          & D1,
          Dense<T>     const& D2)
     {
-    println("Using HPTT to add");
     auto numThreads = omp_get_max_threads();
+    printfln("Using HPTT with %d threads",numThreads);
 
     // specify permutation and size
     int ord = P.is1().order();
@@ -403,7 +403,7 @@ hptt_add(PlusEQ const& P,
     auto plan = hptt::create_plan(perm.data(), ord,
                                   alpha, D2.data(), dimsA.data(), NULL,
                                   beta,  D1.data(), NULL,
-                                  hptt::ESTIMATE, numThreads);
+                                  hptt::MEASURE, numThreads);
 
     // execute the transposition
     plan->execute();
