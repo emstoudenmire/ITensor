@@ -23,6 +23,13 @@
 #include "itensor/tensor/lapack_wrap.h"
 #include "itensor/util/tensorstats.h"
 
+#ifdef ITENSOR_USE_HPTT
+#include "omp.h"
+#include "hptt.h"
+#endif
+
+using std::vector;
+
 namespace itensor {
 
 const char*
@@ -364,6 +371,60 @@ struct Adder
     void operator()(Cplx v2, Real& v1) { }
     };
 
+
+#ifdef ITENSOR_USE_HPTT
+template<typename T>
+void
+hptt_add(PlusEQ const& P,
+         Dense<T>          & D1,
+         Dense<T>     const& D2)
+    {
+    println("Using HPTT to add");
+    auto numThreads = omp_get_max_threads();
+
+    // specify permutation and size
+    int ord = P.is1().order();
+
+    auto perm = vector<int>(ord);
+    for(auto n : range(ord))
+        {
+        perm[n] = P.perm()[n];
+        }
+
+    auto dimsA = vector<int>(ord);
+    for(auto n : range(ord))
+        {
+        dimsA[n] = P.is2()[n].dim();
+        }
+
+    // create a plan (shared_ptr)
+    auto alpha = P.alpha();
+    decltype(alpha) beta = 1.0;
+    auto plan = hptt::create_plan(perm.data(), ord,
+                                  alpha, D2.data(), dimsA.data(), NULL,
+                                  beta,  D1.data(), NULL,
+                                  hptt::ESTIMATE, numThreads);
+
+    // execute the transposition
+    plan->execute();
+    }
+
+void
+hptt_add(PlusEQ const& P,
+         Dense<Real>          & D1,
+         Dense<Cplx>     const& D2)
+    {
+    Error("HPTT does not support Real + Cplx");
+    }
+void
+hptt_add(PlusEQ const& P,
+         Dense<Cplx>          & D1,
+         Dense<Real>     const& D2)
+    {
+    Error("HPTT does not support Real + Cplx");
+    }
+#endif //ITENSOR_USE_HPTT
+
 template<typename T1, typename T2>
 void
 add(PlusEQ const& P,
@@ -381,9 +442,22 @@ add(PlusEQ const& P,
         }
     else
         {
+#ifdef ITENSOR_USE_HPTT
+        if(std::is_same<T1,T2>::value)
+            {
+            hptt_add(P,D1,D2);
+            }
+        else
+            {
+            auto ref1 = makeTenRef(D1.data(),D1.size(),&P.is1());
+            auto ref2 = makeTenRef(D2.data(),D2.size(),&P.is2());
+            transform(permute(ref2,P.perm()),ref1,Adder{P.alpha()});
+            }
+#else
         auto ref1 = makeTenRef(D1.data(),D1.size(),&P.is1());
         auto ref2 = makeTenRef(D2.data(),D2.size(),&P.is2());
         transform(permute(ref2,P.perm()),ref1,Adder{P.alpha()});
+#endif
         }
     }
 
