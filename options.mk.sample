@@ -93,6 +93,26 @@ BLAS_LAPACK_LIBFLAGS=-framework Accelerate
 #########
 ## [3]
 ##
+## If you want ITensor to be compiled with optional
+## support for the HPTT (high-performance tensor transpose)
+## library, uncomment the line below, and edit it to be the
+## directory in which the compiled HPTT and headers are located.
+## Note that you may need to add $HPTT_PREFIX/lib to
+## your LD_LIBRARY_PATH environment variable if you have
+## built the HPTT shared library (libhptt.so).
+##
+## For more information about HPTT and compiling HPTT:
+## https://github.com/springer13/hptt
+##
+## For more help about installing ITensor with HPTT, visit: 
+## http://itensor.org/docs.cgi?vers=cppv3&page=install
+##
+#HPTT_PREFIX=/Users/mstoudenmire/software/hptt
+
+
+#########
+## [4]
+##
 ## If you want ITensor to be compiled with HDF5 support
 ## uncomment the line below, and edit it to be the
 ## location in which the HDF5 libraries and headers are
@@ -108,7 +128,7 @@ BLAS_LAPACK_LIBFLAGS=-framework Accelerate
 
 
 #########
-## [4]
+## [5]
 ##
 ## This step is optional, but if you wish to customize the flags
 ## used to compile optimized and debug code, you can do so here.
@@ -145,6 +165,13 @@ ITENSOR_LIBS=$(patsubst %,$(ITENSOR_LIBDIR)/lib%.a, $(ITENSOR_LIBNAMES))
 ITENSOR_GLIBS=$(patsubst %,$(ITENSOR_LIBDIR)/lib%-g.a, $(ITENSOR_LIBNAMES))
 
 ITENSOR_INCLUDEFLAGS=-I'$(ITENSOR_INCLUDEDIR)' $(BLAS_LAPACK_INCLUDEFLAGS)
+
+ifdef HPTT_PREFIX
+ITENSOR_USE_HPTT = 1
+ITENSOR_INCLUDEFLAGS += -I$(HPTT_PREFIX)/include -DITENSOR_USE_HPTT
+ITENSOR_LIBFLAGS += -L$(HPTT_PREFIX)/lib -lhptt
+ITENSOR_LIBGFLAGS += -L$(HPTT_PREFIX)/lib -lhptt
+endif
 
 ifdef HDF5_PREFIX
 ITENSOR_USE_HDF5 = 1
